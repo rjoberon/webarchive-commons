@@ -3,6 +3,7 @@ package org.archive.hadoop;
 import java.io.IOException;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -25,6 +26,7 @@ import org.archive.resource.warc.WARCResourceFactory;
 import org.archive.streamcontext.HDFSStream;
 import org.archive.streamcontext.Stream;
 import org.archive.util.StreamCopy;
+import org.json.JSONException;
 
 public class ResourceRecordReader extends RecordReader<ResourceContext, MetaData>{
 	private final static Logger LOG =
@@ -110,7 +112,10 @@ public class ResourceRecordReader extends RecordReader<ResourceContext, MetaData
 			Resource r = producer.getNext();
 			if(r != null) {
 
-				StreamCopy.readToEOF(r.getInputStream());
+				//StreamCopy.readToEOF(r.getInputStream());
+				byte[] bytes = IOUtils.toByteArray(r.getInputStream());
+				r.getMetaData().getTopMetaData().put("httpbody", bytes);
+				
 				LOG.info(String.format("Extracted offset %d\n", 
 						series.getCurrentMemberStartOffset()));
 				cachedK = new ResourceContext(name, 
@@ -122,6 +127,12 @@ public class ResourceRecordReader extends RecordReader<ResourceContext, MetaData
 			e.printStackTrace();
 			throw new IOException(
 					String.format("ResourceParseException at(%s)(%d)",
+							name,series.getCurrentMemberStartOffset()),
+					e);
+		} catch (JSONException e) {
+			e.printStackTrace();
+			throw new IOException(
+					String.format("JSONException at(%s)(%d)",
 							name,series.getCurrentMemberStartOffset()),
 					e);
 		}
